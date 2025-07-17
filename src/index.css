@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+.dark {
+    background-color: rgb(17, 14, 26);
+    color: aliceblue;
+}
