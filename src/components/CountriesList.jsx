@@ -20,7 +20,7 @@ export default function CountriesList({ query }) {
           .map((country) => {
             return (
               <CountryCard
-                key={country.name.common}
+                key={country.name}
                 name={country.name}
                 flag={country.flags.svg}
                 population={country.population}
