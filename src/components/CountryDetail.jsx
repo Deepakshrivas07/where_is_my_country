@@ -1,80 +1,67 @@
-import React, { useEffect, useState } from 'react'
-
-import './CountryDetail.css'
-import { Link, useLocation, useParams } from 'react-router-dom'
-import { useTheme } from '../hooks/useTheme'
-import CountryDetailShimmer from './CountryDetailShimmer'
+import React, { useEffect, useState } from "react";
+import "./CountryDetail.css";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { useTheme } from "../hooks/useTheme";
+import CountryDetailShimmer from "./CountryDetailShimmer";
+import countriesData from "../countriesData";
 
 export default function CountryDetail() {
-  const [isDark] = useTheme()
-  const params = useParams()
-  const { state } = useLocation()
-  const countryName = params.country
+  const [isDark] = useTheme();
+  const { state } = useLocation();
+  const params = useParams();
+  const countryName = params.country;
+  const [countryData, setCountryData] = useState(null);
 
-  const [countryData, setCountryData] = useState(null)
-  const [notFound, setNotFound] = useState(false)
-
+  // Helper to extract and structure the country data
   function updateCountryData(data) {
-    setCountryData({
+    const country = {
       name: data.name.common || data.name,
-      nativeName: Object.values(data.name.nativeName || {})[0]?.common,
+      nativeName:
+        Object.values(data.name.nativeName || {})[0]?.common ||
+        data.name.common,
       population: data.population,
       region: data.region,
       subregion: data.subregion,
       capital: data.capital,
-      flag: data.flags.svg,
-      tld: data.tld,
-      languages: Object.values(data.languages || {}).join(', '),
+      flag: data.flags?.svg,
+      area: data.area,
+      languages: data.languages,
       currencies: Object.values(data.currencies || {})
         .map((currency) => currency.name)
-        .join(', '),
-      borders: [],
-    })
+        .join(", "),
+      borders: data.borders || [],
+    };
 
-    if (!data.borders) {
-      data.borders = []
-    }
-
-    Promise.all(
-      data.borders.map((border) => {
-        return fetch(`https://restcountries.com/v3.1/alpha/${border}`)
-          .then((res) => res.json())
-          .then(([borderCountry]) => borderCountry.name.common)
-      })
-    ).then((borders) => {
-      setTimeout(() =>
-        setCountryData((prevState) => ({ ...prevState, borders }))
-      )
-    })
+    setCountryData(country);
   }
 
   useEffect(() => {
+    let country = null;
+
     if (state) {
-      updateCountryData(state)
-      return
+      // If coming from card with state
+      country = state;
+    } else {
+      // If accessed directly, match by name from the param
+      country = countriesData.find(
+        (c) => c.name.common.toLowerCase() === countryName.toLowerCase()
+      );
     }
 
-    fetch(`https://restcountries.com/v3.1/name/${countryName}?fullText=true`)
-      .then((res) => res.json())
-      .then(([data]) => {
-        updateCountryData(data)
-      })
-      .catch((err) => {
-        console.log(err)
-        setNotFound(true)
-      })
-  }, [countryName])
-
-  if (notFound) {
-    return <div>Country Not Found</div>
-  }
+    if (country) {
+      updateCountryData(country);
+    } else {
+      console.warn("Country not found in local data:", countryName);
+    }
+  }, [countryName, state]);
 
   return (
-    <main className={`${isDark ? 'dark' : ''}`}>
+    <main className={`${isDark ? "dark" : ""}`}>
       <div className="country-details-container">
         <span className="back-button" onClick={() => history.back()}>
           <i className="fa-solid fa-arrow-left"></i>&nbsp; Back
         </span>
+
         {countryData === null ? (
           <CountryDetailShimmer />
         ) : (
@@ -84,50 +71,58 @@ export default function CountryDetail() {
               <h1>{countryData.name}</h1>
               <div className="details-text">
                 <p>
-                  <b>
-                    Native Name: {countryData.nativeName || countryData.name}
-                  </b>
-                  <span className="native-name"></span>
+                  <b>Native Name:</b> {countryData.name}
                 </p>
                 <p>
-                  <b>
-                    Population: {countryData.population.toLocaleString('en-IN')}
-                  </b>
-                  <span className="population"></span>
+                  <b>Population:</b>{" "}
+                  {countryData.population.toLocaleString("en")}
                 </p>
                 <p>
-                  <b>Region: {countryData.region}</b>
-                  <span className="region"></span>
+                  <b>Region:</b> {countryData.region}
                 </p>
                 <p>
-                  <b>Sub Region: {countryData.subregion}</b>
-                  <span className="sub-region"></span>
+                  <b>Sub Region:</b> {countryData.subregion}
                 </p>
                 <p>
-                  <b>Capital: {countryData.capital?.join(', ')}</b>
-                  <span className="capital"></span>
+                  <b>Capital:</b>{" "}
+                  {Array.isArray(countryData.capital)
+                    ? countryData.capital.join(", ")
+                    : countryData.capital || "N/A"}
+                </p>
+
+                <p>
+                  <b>Area Covers:</b> {countryData.area.toLocaleString("en")}
                 </p>
                 <p>
-                  <b>Top Level Domain: {countryData.tld}</b>
-                  <span className="top-level-domain"></span>
+                  <b>Currencies:</b> {countryData.currencies}
                 </p>
                 <p>
-                  <b>Currencies: {countryData.currencies}</b>
-                  <span className="currencies"></span>
-                </p>
-                <p>
-                  <b>Languages: {countryData.languages}</b>
-                  <span className="languages"></span>
+                  <b>Languages:</b>{" "}
+                  {Array.isArray(countryData.languages)
+                    ? countryData.languages.map((lang) => lang.name).join(", ")
+                    : "N/A"}
                 </p>
               </div>
-              {countryData.borders.length !== 0 && (
+
+              {countryData.borders?.length > 0 && (
                 <div className="border-countries">
-                  <b>Border Countries: </b>&nbsp;
-                  {countryData.borders.map((border) => (
-                    <Link key={border} to={`/${border}`}>
-                      {border}
-                    </Link>
-                  ))}
+                  <b>Border Countries:</b>&nbsp;
+                  {countryData.borders.map((borderCode) => {
+                    const borderCountry = countriesData.find(
+                      (c) => c.cca3 === borderCode
+                    );
+                    return borderCountry ? (
+                      <Link
+                        key={borderCode}
+                        to={`/${encodeURIComponent(borderCountry.name.common)}`}
+                        state={borderCountry}
+                      >
+                        {borderCountry.name.common}
+                      </Link>
+                    ) : (
+                      <span key={borderCode}>{borderCode}</span> // fallback if not found
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -135,5 +130,5 @@ export default function CountryDetail() {
         )}
       </div>
     </main>
-  )
+  );
 }
